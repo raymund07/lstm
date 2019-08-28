@@ -7,6 +7,13 @@ class DataLoader():
 
     def __init__(self, filename, split, cols):
         dataframe = pd.read_csv(filename)
+        dataframe.dropna(inplace=True)
+       
+        print(filename,split,cols)
+        print(dataframe.info())
+#        dataframe['Date'] = pd.to_datetime(dataframe['Date'])
+#        dataframe.values.astype('float32')
+#       
         i_split = int(len(dataframe) * split)
         self.data_train = dataframe.get(cols).values[:i_split]
         self.data_test  = dataframe.get(cols).values[i_split:]
@@ -77,7 +84,11 @@ class DataLoader():
         for window in window_data:
             normalised_window = []
             for col_i in range(window.shape[1]):
-                normalised_col = [((float(p) / float(window[0, col_i])) - 1) for p in window[:, col_i]]
+                try:
+                    normalised_col = [((float(p) / float(window[0, col_i])) - 1) for p in window[:, col_i]]
+                except:
+                    print('error')
+                    
                 normalised_window.append(normalised_col)
             normalised_window = np.array(normalised_window).T # reshape and transpose array back into original multidimensional format
             normalised_data.append(normalised_window)

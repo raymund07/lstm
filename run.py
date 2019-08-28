@@ -7,6 +7,7 @@ import os
 import json
 import time
 import math
+import pandas
 import matplotlib.pyplot as plt
 from core.data_processor import DataLoader
 from core.model import Model
@@ -49,17 +50,17 @@ def main():
         seq_len=configs['data']['sequence_length'],
         normalise=configs['data']['normalise']
     )
-
-    '''
-	# in-memory training
-	model.train(
-		x,
-		y,
-		epochs = configs['training']['epochs'],
-		batch_size = configs['training']['batch_size'],
-		save_dir = configs['model']['save_dir']
-	)
-	'''
+#
+#    '''
+#	# in-memory training
+#	model.train(
+#		x,
+#		y,
+#		epochs = configs['training']['epochs'],
+#		batch_size = configs['training']['batch_size'],
+#		save_dir = configs['model']['save_dir']
+#	)
+#	'''
     # out-of memory generative training
     steps_per_epoch = math.ceil((data.len_train - configs['data']['sequence_length']) / configs['training']['batch_size'])
     model.train_generator(
