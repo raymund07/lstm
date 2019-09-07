@@ -17,7 +17,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, ModelCheckpoint
 import time
 from sklearn import preprocessing
 SEQ_LEN=60
-FUTURE_PERIOD_PREDICT=8
+FUTURE_PERIOD_PREDICT=3
 RATIO_TO_PREDICT="EURUSD"
 
 def clean_dataset(df):
@@ -165,8 +165,8 @@ print(f"VALIDATION Dont buys: {validation_y.count(0)}, buys: {validation_y.count
 
 import time
 
-EPOCHS = 10  # how many passes through our data
-BATCH_SIZE = 64  # how many batches? Try smaller batch if you're getting OOM (out of memory) errors.
+EPOCHS = 3000  # how many passes through our data
+BATCH_SIZE = 500  # how many batches? Try smaller batch if you're getting OOM (out of memory) errors.
 NAME = f"{SEQ_LEN}-SEQ-{FUTURE_PERIOD_PREDICT}-PRED-{int(time.time())}"  # a unique name for the mode
 
 model = Sequential()
