@@ -29,6 +29,7 @@ class DataLoader():
         '''
         data_windows = []
         for i in range(self.len_test - seq_len):
+            print (data_windows)
             data_windows.append(self.data_test[i:i+seq_len])
 
         data_windows = np.array(data_windows).astype(float)
@@ -36,6 +37,8 @@ class DataLoader():
 
         x = data_windows[:, :-1]
         y = data_windows[:, -1, [0]]
+     
+        
         return x,y
 
     def get_train_data(self, seq_len, normalise):
@@ -48,8 +51,10 @@ class DataLoader():
         data_y = []
         for i in range(self.len_train - seq_len):
             x, y = self._next_window(i, seq_len, normalise)
+        
             data_x.append(x)
             data_y.append(y)
+            
         return np.array(data_x), np.array(data_y)
 
     def generate_train_batch(self, seq_len, batch_size, normalise):
