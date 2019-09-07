@@ -30,19 +30,23 @@ def clean_dataset(df):
 def preprocess_df(df):
     df = df.drop("future", 1)  # don't need this anymore.
     print(df.head())
+    print(df.tail())
+    df.dropna(how='all' ,inplace=True)
+    df.dropna(axis=0)
 
     for col in df.columns:  # go through all of the columns
         if col != "target":  # normalize all ... except for the target itself!
-            try:
-                df[col] = df[col].pct_change()  # pct change "normalizes" the different currencies (each crypto coin has vastly diff values, we're really more interested in the other coin's movements)
-                df.dropna(how='all' ,inplace=True)  # remove the nas created by pct_change
-                df[col] = preprocessing.scale(df[col].values)  # scale between 0 and 1.
-            except:
-                print(df[col])
+          
+            pct change "normalizes" the different currencies (each crypto coin has vastly diff values, we're really more interested in the other coin's movements)
+            df.dropna(how='all' ,inplace=True)  # remove the nas created by pct_change
+            df[col] = preprocessing.scale(df[col].values)  # scale between 0 and 1.
+            df.dropna(how='all' ,inplace=True)  # remove the nas created by pct_change
+            df.fillna(method="ffill", inplace=True)
+            print(df[col])
                 
     df.dropna(how='all',inplace=True)  # cleanup again... jic.
     print(df.tail(10))
-
+    
 
     sequential_data = []  # this is a list that will CONTAIN the sequences
     prev_days = deque(maxlen=SEQ_LEN)  # These will be our actual sequences. They are made with deque, which keeps the maximum length by popping out older values as new ones come in
@@ -118,10 +122,11 @@ for ratio in ratios:
     df.rename(columns={"Gmt time":"time","Close":f"{ratio}_close","Volume":f"{ratio}_volume"},inplace=True)
     df['time'] = pd.to_datetime(df['time'], infer_datetime_format=True)  - timedelta(hours=4,minutes=0,seconds=0)
     df['time']=  pd.to_datetime(df['time']) 
+ 
     
     df.set_index("time", inplace=True)
     
-    df=df[[f"{ratio}_close",f"{ratio}_volume"]]
+    df=df[[f"{ratio}_close"]]
     print(df.head())
     
     if len(main_df)==0:
@@ -140,9 +145,10 @@ print(main_df.head(10))
 times = sorted(main_df.index.values)  # get the times
 main_df.dropna(inplace=True)
 main_df.dropna(how='any', inplace=True)
-last_5pct = sorted(main_df.index.values)[-int(0.05*len(times))]  # get the last 5% of the times
+last_5pct = sorted(main_df.index.values)[-int(0.10*len(times))] 
+ # get the last 5% of the times
 validation_main_df = main_df[(main_df.index >= last_5pct)]  # make the validation data where the index is in the last 5%
-main_df=main_df[(main_df.index <= last_5pct)]
+main_df=main_df[(main_df.index < last_5pct)]
 
 main_df.dropna(how='any', inplace=True)
 print(main_df.tail(20))
@@ -150,14 +156,22 @@ print(validation_main_df.tail(20))
 
 print(validation_main_df.head())
 #last_5pct = sorted(main_df.index.values)[-int(0.95*len(times))]  # get the last 5% of the times
-#main_df=main_df.replace([np.inf, -np.inf], np.nan)
-#main_df.replace([np.inf, -np.inf], np.nan).dropna(how="all",inplace=True)
+main_df=main_df.replace([np.inf, -np.inf], np.nan)
+main_df.replace([np.inf, -np.inf], np.nan).dropna(how="all",inplace=True)
+
+validation_main_df=validation_main_df.replace([np.inf, -np.inf], np.nan)
+validation_main_df.replace([np.inf, -np.inf], np.nan).dropna(how="all",inplace=True)
+
 print(main_df.head())
+print(main_df.isnull().values.any())
+print(validation_main_df.isnull().values.any())
+
 train_x, train_y = preprocess_df(main_df)
+
+
 validation_x, validation_y = preprocess_df(validation_main_df)
-
-
-
+print(np.shape(train_y))
+print(np.shape(train_x))
 print(f"train data: {len(train_x)} validation: {len(validation_x)}")
 print(f"Dont buys: {train_y.count(0)}, buys: {train_y.count(1)},hold:{train_y.count(2)}")
 print(f"VALIDATION Dont buys: {validation_y.count(0)}, buys: {validation_y.count(1)},hold:{validation_y.count(2)}")
@@ -195,7 +209,7 @@ model.compile(
     optimizer=opt,
     metrics=['accuracy']
 )
-tensorboard = TensorBoard(log_dir="logs/{}".format(NAME))
+tensorboard = TensorBoard(log_dir="logs2/{}".format(NAME))
 filepath = "RNN_Final-{epoch:02d}-{val_acc:.3f}"  # unique file name that will include the epoch and the validation acc for that epoch
 checkpoint = ModelCheckpoint("models/{}.model".format(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')) # saves only the best ones
 
@@ -204,5 +218,5 @@ history = model.fit(
     batch_size=BATCH_SIZE,
     epochs=EPOCHS,
     validation_data=(validation_x, validation_y),
-    callbacks=[tensorboard, checkpoint],
+    
 )
