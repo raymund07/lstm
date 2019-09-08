@@ -1,9 +1,20 @@
 {
 	"data": {
-		"filename": "EURUSD.csv",
+		"filename": "major.csv",
 		"columns": [
-			"Close",
-			"Volume"
+			"AUDUSD_close",
+			"AUDUSD_volume",
+			"EURUSD_close",
+			"URUSD_volume",
+			"GBPUSD_close",
+			"GBPUSD_volume",
+			"NZDUSD_close",
+			"NZDUSD_volume",
+			"USDCAD_close",
+			"USDCAD_volume",
+			"USDCHF_close",
+			"USDCHF_volume"
+			
 		],
 		"sequence_length": 50,
 		"train_test_split": 0.85,

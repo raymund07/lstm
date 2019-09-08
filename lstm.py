@@ -15,9 +15,10 @@ from tensorflow.keras.layers import Dense, Dropout, LSTM, CuDNNLSTM, BatchNormal
 from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.callbacks import ModelCheckpoint, ModelCheckpoint
 import time
+import math
 from sklearn import preprocessing
 SEQ_LEN=60
-FUTURE_PERIOD_PREDICT=3
+FUTURE_PERIOD_PREDICT=8
 RATIO_TO_PREDICT="EURUSD"
 
 def clean_dataset(df):
@@ -28,24 +29,23 @@ def clean_dataset(df):
 
 
 def preprocess_df(df):
+    
     df = df.drop("future", 1)  # don't need this anymore.
-    print(df.head())
-    print(df.tail())
-    df.dropna(how='all' ,inplace=True)
-    df.dropna(axis=0)
-
-    for col in df.columns:  # go through all of the columns
-        if col != "target":  # normalize all ... except for the target itself!
-          
-            pct change "normalizes" the different currencies (each crypto coin has vastly diff values, we're really more interested in the other coin's movements)
-            df.dropna(how='all' ,inplace=True)  # remove the nas created by pct_change
+    
+    for col in df.columns:  
+        # go through all of the columns
+        if col != "target":
+            # normalize all ... except for the target itself!
+         
+            
+#           pct change "normalizes" the different currencies (each crypto coin has vastly diff values, we're really more interested in the other coin's movements)
+            df.dropna(inplace=True)  # remove the nas created by pct_change
             df[col] = preprocessing.scale(df[col].values)  # scale between 0 and 1.
-            df.dropna(how='all' ,inplace=True)  # remove the nas created by pct_change
-            df.fillna(method="ffill", inplace=True)
+            
             print(df[col])
                 
-    df.dropna(how='all',inplace=True)  # cleanup again... jic.
-    print(df.tail(10))
+    df.dropna(how='any',inplace=True)  # cleanup again... jic.
+
     
 
     sequential_data = []  # this is a list that will CONTAIN the sequences
@@ -63,13 +63,13 @@ def preprocess_df(df):
     holds=[]
 
     for seq, target in sequential_data:  # iterate over the sequential data
-        if target == 0:  # if it's a "not buy"
+        if target == 2:  # if it's a "not buy"
             sells.append([seq, target])  # append to sells list
         elif target == 1:  # otherwise if the target is a 1...
             buys.append([seq, target])  # it's a buy!
         else:
             holds.append([seq,target])#its hold or do nothing
-
+#
     random.shuffle(buys)  # shuffle the buys
     random.shuffle(holds)  # shuffle the sells!
     random.shuffle(sells)  # shuffle the sells!
@@ -95,45 +95,48 @@ def classify(current,future):
     
     if RATIO_TO_PREDICT=='USDJPY':
        pip_value=float(future)-float(current)
-       if (pip_value>0.10):
+       if (pip_value>0.50):
            return 1
-       elif(pip_value<-0.10):
-           return 0
-       else:
+       elif(pip_value<-0.50):
            return 2
+       else:
+           return 3
     else:
         pip_value=float(future)-float(current)
         if (pip_value>.0010):
             return 1
         elif(pip_value>-.0010):
-            return 0
-        else:
             return 2
+        else:
+            return 3
         
         
 
 main_df=pd.DataFrame()
-ratios=["AUDUSD","EURUSD","GBPUSD","NZDUSD","USDCAD","USDCHF","USDJPY"]
+ratios=["AUDUSD","EURUSD","GBPUSD","NZDUSD","USDCAD","USDCHF"]
 from datetime import datetime, timedelta
 
-for ratio in ratios:
-    dataset=f"data/{ratio}.csv"
-    df=pd.read_csv(dataset)
-    df.rename(columns={"Gmt time":"time","Close":f"{ratio}_close","Volume":f"{ratio}_volume"},inplace=True)
-    df['time'] = pd.to_datetime(df['time'], infer_datetime_format=True)  - timedelta(hours=4,minutes=0,seconds=0)
-    df['time']=  pd.to_datetime(df['time']) 
- 
-    
-    df.set_index("time", inplace=True)
-    
-    df=df[[f"{ratio}_close"]]
-    print(df.head())
-    
-    if len(main_df)==0:
-        main_df=df
-    else:
-        main_df=main_df.join(df)
+#for ratio in ratios:
+#    dataset=f"data/{ratio}.csv"
+#    df=pd.read_csv(dataset)
+#    df.rename(columns={"Gmt time":"time","Close":f"{ratio}_close","Volume":f"{ratio}_volume"},inplace=True)
+#    df['time'] = pd.to_datetime(df['time'], infer_datetime_format=True)  - timedelta(hours=4,minutes=0,seconds=0)
+#    df['time']=  pd.to_datetime(df['time']) 
+#    df[f"{ratio}_volume"]=round(df[f"{ratio}_volume"]/1000000)
+#    df.set_index("time", inplace=True)
+#    df = df[[f"{ratio}_close", f"{ratio}_volume"]]  # ignore the other columns besides price and volume
+#    print(df.head())
+#
+#    if len(main_df)==0:
+#        main_df=df
+#    else:
+#        main_df=main_df.join(df)
         
+main_df.to_csv('data/major.csv')
+main_df=pd.read_csv(dataset)    
+df['time']=  pd.to_datetime(df['time']) 
+print(df.head())
+df.set_index("time", inplace=True)    
 main_df.fillna(method="ffill", inplace=True)  # if there are gaps in data, use previously known values
 main_df.dropna(how='any', inplace=True)
 print(main_df.head())  # how did we do??
@@ -145,41 +148,46 @@ print(main_df.head(10))
 times = sorted(main_df.index.values)  # get the times
 main_df.dropna(inplace=True)
 main_df.dropna(how='any', inplace=True)
-last_5pct = sorted(main_df.index.values)[-int(0.10*len(times))] 
- # get the last 5% of the times
-validation_main_df = main_df[(main_df.index >= last_5pct)]  # make the validation data where the index is in the last 5%
-main_df=main_df[(main_df.index < last_5pct)]
+last_5pct = sorted(main_df.index.values)[-int(0.01*len(times))] 
 
+ # get the last 5% of the times
+validation_main_df = main_df[(main_df.index >= last_5pct)] 
+# make the validation data where the index is in the last 5%
+main_df=main_df[(main_df.index < last_5pct)]
+jk = sorted(main_df.index.values)[-int(0.80*len(times))] 
+main_df=main_df[(main_df.index >= jk)]
+#
 main_df.dropna(how='any', inplace=True)
 print(main_df.tail(20))
 print(validation_main_df.tail(20))
+#
+main_df = main_df.replace(0, np.nan)
+main_df.dropna(how='any', inplace=True)
 
-print(validation_main_df.head())
-#last_5pct = sorted(main_df.index.values)[-int(0.95*len(times))]  # get the last 5% of the times
-main_df=main_df.replace([np.inf, -np.inf], np.nan)
-main_df.replace([np.inf, -np.inf], np.nan).dropna(how="all",inplace=True)
+validation_main_df = validation_main_df.replace(0, np.nan)
+validation_main_df.dropna(how='any', inplace=True)
 
-validation_main_df=validation_main_df.replace([np.inf, -np.inf], np.nan)
-validation_main_df.replace([np.inf, -np.inf], np.nan).dropna(how="all",inplace=True)
-
-print(main_df.head())
-print(main_df.isnull().values.any())
-print(validation_main_df.isnull().values.any())
-
+#print(main_df.head())
+#validation_main_df=validation_main_df.replace([np.inf, -np.inf], np.nan)
+#validation_main_df.replace([np.inf, -np.inf], np.nan).dropna(how="all",inplace=True)
+#
+#print(main_df.head())
+#print(main_df.isnull().values.any())
+#print(validation_main_df.isnull().values.any())
+#preprocess_df(main_df)
+#
 train_x, train_y = preprocess_df(main_df)
-
-
 validation_x, validation_y = preprocess_df(validation_main_df)
-print(np.shape(train_y))
-print(np.shape(train_x))
+
+
 print(f"train data: {len(train_x)} validation: {len(validation_x)}")
-print(f"Dont buys: {train_y.count(0)}, buys: {train_y.count(1)},hold:{train_y.count(2)}")
-print(f"VALIDATION Dont buys: {validation_y.count(0)}, buys: {validation_y.count(1)},hold:{validation_y.count(2)}")
+print(f"Dont buys: {train_y.count(2)}, buys: {train_y.count(1)},hold:{train_y.count(3)}")
+print(f"VALIDATION Dont buys: {validation_y.count(2)}, buys: {validation_y.count(1)},hold:{validation_y.count(3)}")
 
-
+##
 import time
 
-EPOCHS = 3000  # how many passes through our data
+EPOCHS = 5  # how many passes through our data
 BATCH_SIZE = 500  # how many batches? Try smaller batch if you're getting OOM (out of memory) errors.
 NAME = f"{SEQ_LEN}-SEQ-{FUTURE_PERIOD_PREDICT}-PRED-{int(time.time())}"  # a unique name for the mode
 
@@ -210,7 +218,7 @@ model.compile(
     metrics=['accuracy']
 )
 tensorboard = TensorBoard(log_dir="logs2/{}".format(NAME))
-filepath = "RNN_Final-{epoch:02d}-{val_acc:.3f}"  # unique file name that will include the epoch and the validation acc for that epoch
+filepath = "RNNy_Final-{epoch:02d}-{val_acc:.3f}"  # unique file name that will include the epoch and the validation acc for that epoch
 checkpoint = ModelCheckpoint("models/{}.model".format(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')) # saves only the best ones
 
 history = model.fit(
